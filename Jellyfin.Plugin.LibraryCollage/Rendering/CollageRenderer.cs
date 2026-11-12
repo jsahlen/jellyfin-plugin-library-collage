@@ -282,12 +282,16 @@ public static class CollageRenderer
         float w = options.Width;
         float h = options.Height;
 
+        using var custom = TryLoadFontFile(options.FontPath);
+        var display = custom ?? DisplayTypeface.Value;
+        var sans = custom ?? SansTypeface.Value;
+
         var (typeface, text, targetSize, maxWidth) = options.TextStyle switch
         {
-            TextStyle.Poster => (DisplayTypeface.Value, title.ToUpper(CultureInfo.CurrentCulture), h * 0.30f, w * 0.88f),
-            TextStyle.Label => (DisplayTypeface.Value, title.ToUpper(CultureInfo.CurrentCulture), h * 0.26f, w * 0.74f),
-            TextStyle.Netflix => (SansTypeface.Value, title, h * 0.10f, w * 0.88f),
-            _ => (SansTypeface.Value, title, h * 0.19f, w * 0.86f),
+            TextStyle.Poster => (display, title.ToUpper(CultureInfo.CurrentCulture), h * 0.30f, w * 0.88f),
+            TextStyle.Label => (display, title.ToUpper(CultureInfo.CurrentCulture), h * 0.26f, w * 0.74f),
+            TextStyle.Netflix => (sans, title, h * 0.10f, w * 0.88f),
+            _ => (sans, title, h * 0.19f, w * 0.86f),
         };
         targetSize *= Math.Clamp(options.TextScale, 0.5f, 1.5f);
 
@@ -467,6 +471,28 @@ public static class CollageRenderer
         using var stream = assembly.GetManifestResourceStream(name)
             ?? throw new InvalidOperationException($"Embedded font '{name}' not found.");
         return SKTypeface.FromStream(stream) ?? SKTypeface.Default;
+    }
+
+    /// <summary>
+    /// Loads a font from disk, or returns <c>null</c> if it is missing or unreadable.
+    /// </summary>
+    private static SKTypeface? TryLoadFontFile(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            // Read into memory so the file isn't held open and can be replaced while rendering.
+            using var data = SKData.CreateCopy(File.ReadAllBytes(path));
+            return SKTypeface.FromData(data);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private readonly record struct Cell(int Row, int Col, SKRect Rect);

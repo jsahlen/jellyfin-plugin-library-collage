@@ -14,6 +14,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
         serviceCollection.AddSingleton<ManagedImageStore>();
+        serviceCollection.AddSingleton<CustomFontStore>();
         serviceCollection.AddSingleton<CollageService>();
     }
 }

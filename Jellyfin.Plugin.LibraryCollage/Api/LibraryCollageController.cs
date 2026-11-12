@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.LibraryCollage.Services;
@@ -22,16 +23,19 @@ public class LibraryCollageController : ControllerBase
 {
     private readonly CollageService _collageService;
     private readonly ITaskManager _taskManager;
+    private readonly CustomFontStore _fontStore;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LibraryCollageController"/> class.
     /// </summary>
     /// <param name="collageService">The collage service.</param>
     /// <param name="taskManager">The task manager.</param>
-    public LibraryCollageController(CollageService collageService, ITaskManager taskManager)
+    /// <param name="fontStore">The custom font store.</param>
+    public LibraryCollageController(CollageService collageService, ITaskManager taskManager, CustomFontStore fontStore)
     {
         _collageService = collageService;
         _taskManager = taskManager;
+        _fontStore = fontStore;
     }
 
     /// <summary>
@@ -79,6 +83,56 @@ public class LibraryCollageController : ControllerBase
     public IActionResult Generate()
     {
         _taskManager.QueueScheduledTask<GenerateCollagesTask>();
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Gets the uploaded font.
+    /// </summary>
+    /// <returns>The font's family name, or <c>null</c> when the built-in fonts are used.</returns>
+    [HttpGet("Font")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetFont() => Ok(new { FamilyName = _fontStore.GetFamilyName() });
+
+    /// <summary>
+    /// Uploads a font that replaces the built-in fonts of every text style.
+    /// </summary>
+    /// <param name="file">A TrueType or OpenType font file.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The font's family name.</returns>
+    [HttpPost("Font")]
+    [RequestSizeLimit(CustomFontStore.MaxBytes + (1024 * 1024))]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadFont(IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest("No file uploaded.");
+        }
+
+        if (file.Length > CustomFontStore.MaxBytes)
+        {
+            return BadRequest("The font file is larger than 20 MB.");
+        }
+
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        var familyName = _fontStore.Save(buffer.ToArray());
+        return familyName is null
+            ? BadRequest("The file is not a font that can be read. Use a .ttf or .otf file.")
+            : Ok(new { FamilyName = familyName });
+    }
+
+    /// <summary>
+    /// Removes the uploaded font so the built-in fonts are used again.
+    /// </summary>
+    /// <returns>No content.</returns>
+    [HttpDelete("Font")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult DeleteFont()
+    {
+        _fontStore.Remove();
         return NoContent();
     }
 }

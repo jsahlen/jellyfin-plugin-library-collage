@@ -44,6 +44,9 @@ public sealed class CollageOptions
     /// <summary>Gets the opacity of the Label style's box, 0–100.</summary>
     public int LabelBoxOpacity { get; init; } = 80;
 
+    /// <summary>Gets the path of a font file that replaces the built-in fonts of every style, or <c>null</c>.</summary>
+    public string? FontPath { get; init; }
+
     /// <summary>Gets the JPEG quality, 1–100.</summary>
     public int JpegQuality { get; init; } = 90;
 }

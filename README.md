@@ -71,6 +71,7 @@ All settings are on the plugin's settings page.
 | **Write library name** | On | Turns the text off if your theme already shows the name. |
 | **Default text style** | Poster | *Poster*, *Classic*, *Netflix*, or *Label*. See below. |
 | **Text style** (per library) | Default | Overrides the default text style for one library. "Set all…" above the column changes every library at once. |
+| **Custom font** | Built-in | Upload a `.ttf` or `.otf` file (max 20 MB) to use for every text style instead of the built-in fonts. It is kept until you click *Remove*. |
 | **Same font size for all libraries** | Off | Long names wrap onto more lines instead of shrinking, so every tile uses the same font size. |
 | **Text size** | 100 % | Scales the text of every style, from 50 % to 150 %. |
 | **Text colour** | Default | White, or dark grey for the Label style. |

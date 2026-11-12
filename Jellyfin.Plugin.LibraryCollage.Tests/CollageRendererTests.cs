@@ -83,6 +83,29 @@ public sealed class CollageRendererTests : IDisposable
         Assert.NotEmpty(jpeg);
     }
 
+    [Theory]
+    [InlineData(TextStyle.Classic)]
+    [InlineData(TextStyle.Netflix)]
+    [InlineData(TextStyle.Label)]
+    public void Render_WithCustomFont(TextStyle style)
+    {
+        var fontPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Jellyfin.Plugin.LibraryCollage", "Rendering", "Fonts", "BebasNeue-Regular.ttf"));
+        var options = new CollageOptions { TextStyle = style, FontPath = fontPath };
+        var jpeg = CollageRenderer.Render(CreatePosters(CollageRenderer.GetCellCount(options)), "Documentaries", options);
+        File.WriteAllBytes(Path.Combine(SamplesDir, $"Font-{style}.jpg"), jpeg);
+        Assert.NotEmpty(jpeg);
+    }
+
+    [Fact]
+    public void Render_WithBrokenOrMissingFont_FallsBack()
+    {
+        var broken = Path.Combine(_posterDir, "broken.ttf");
+        File.WriteAllText(broken, "not a font");
+
+        Assert.NotEmpty(CollageRenderer.Render(CreatePosters(3), "Test", new CollageOptions { FontPath = broken }));
+        Assert.NotEmpty(CollageRenderer.Render(CreatePosters(3), "Test", new CollageOptions { FontPath = Path.Combine(_posterDir, "missing.ttf") }));
+    }
+
     [Fact]
     public void Render_Banner_ForReadme()
     {

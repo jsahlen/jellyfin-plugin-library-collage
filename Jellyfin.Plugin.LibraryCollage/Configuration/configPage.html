@@ -59,6 +59,8 @@
             #LibraryCollageConfigPage .lc-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; padding: 0; border: 0; -webkit-appearance: none; appearance: none; clip: rect(0 0 0 0); }
             #LibraryCollageConfigPage .lc-row[hidden] { display: none; }
             #LibraryCollageConfigPage .lc-number { width: 5em; text-align: center; background: rgba(0,0,0,.25); color: inherit; border: 1px solid rgba(255,255,255,.25); border-radius: .4em; padding: .45em .5em; font: inherit; }
+            #LibraryCollageConfigPage .lc-preview-btn[hidden] { display: none; }
+            #LibraryCollageConfigPage .lc-font-name { font-size: .9em; opacity: .8; max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             #LibraryCollageConfigPage .lc-switch span { position: absolute; inset: 0; border-radius: 1em; background: rgba(255,255,255,.2); transition: background .2s; }
             #LibraryCollageConfigPage .lc-switch span::before { content: ""; position: absolute; width: 1.2em; height: 1.2em; left: .2em; top: .2em; border-radius: 50%; background: #fff; transition: transform .2s; }
             #LibraryCollageConfigPage .lc-switch input:checked + span { background: #00a4dc; }
@@ -163,6 +165,18 @@
                                 <option value="Netflix">Netflix (bottom left, with gradient)</option>
                                 <option value="Label">Label (dark text on a light box)</option>
                             </select>
+                        </div>
+                        <div class="lc-row">
+                            <div class="lc-row-label">
+                                <div class="lc-row-title">Custom font</div>
+                                <div class="lc-hint">A .ttf or .otf file that replaces the built-in fonts of every text style. Takes effect right away, until you remove it.</div>
+                            </div>
+                            <div class="lc-row-control">
+                                <span id="lcFontName" class="lc-font-name">Built-in</span>
+                                <input type="file" id="lcFontFile" accept=".ttf,.otf,font/ttf,font/otf" hidden>
+                                <button type="button" id="lcFontUpload" class="lc-preview-btn"><span class="material-icons" aria-hidden="true">upload_file</span>Upload</button>
+                                <button type="button" id="lcFontRemove" class="lc-preview-btn" hidden><span class="material-icons" aria-hidden="true">delete</span>Remove</button>
+                            </div>
                         </div>
                         <div class="lc-row">
                             <div class="lc-row-label">
@@ -416,7 +430,7 @@
                     Dashboard.showLoadingMsg();
                     save().then(function () {
                         return fetch(ApiClient.getUrl('LibraryCollage/Preview/' + libraries[index].Id), {
-                            headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                            headers: authHeaders()
                         });
                     }).then(function (response) {
                         if (!response.ok) {
@@ -470,6 +484,43 @@
                     });
                 }
 
+                function authHeaders() {
+                    return { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' };
+                }
+
+                function renderFont(familyName) {
+                    page.querySelector('#lcFontName').textContent = familyName || 'Built-in';
+                    page.querySelector('#lcFontName').title = familyName || '';
+                    page.querySelector('#lcFontRemove').hidden = !familyName;
+                }
+
+                function loadFont() {
+                    ApiClient.getJSON(ApiClient.getUrl('LibraryCollage/Font')).then(function (result) {
+                        renderFont(result.FamilyName);
+                    });
+                }
+
+                function uploadFont(file) {
+                    var body = new FormData();
+                    body.append('file', file);
+                    Dashboard.showLoadingMsg();
+                    fetch(ApiClient.getUrl('LibraryCollage/Font'), { method: 'POST', headers: authHeaders(), body: body })
+                        .then(function (response) {
+                            if (response.ok) {
+                                return response.json();
+                            }
+                            return response.text().then(function (text) {
+                                throw new Error(response.status === 413 ? 'The font file is too large.' : (text || 'Upload failed.').replace(/^"|"$/g, ''));
+                            });
+                        }).then(function (result) {
+                            renderFont(result.FamilyName);
+                        }).catch(function (err) {
+                            Dashboard.alert('Could not upload the font. ' + err.message);
+                        }).finally(function () {
+                            Dashboard.hideLoadingMsg();
+                        });
+                }
+
                 function showVersion() {
                     ApiClient.getJSON(ApiClient.getUrl('Plugins')).then(function (plugins) {
                         var self = plugins.filter(function (p) { return (p.Id || '').replace(/-/g, '') === pluginId.replace(/-/g, ''); })[0];
@@ -479,6 +530,27 @@
 
                 page.addEventListener('pageshow', load);
                 page.addEventListener('pageshow', showVersion);
+                page.addEventListener('pageshow', loadFont);
+
+                page.querySelector('#lcFontUpload').addEventListener('click', function () {
+                    page.querySelector('#lcFontFile').click();
+                });
+
+                page.querySelector('#lcFontFile').addEventListener('change', function (e) {
+                    var file = e.target.files[0];
+                    e.target.value = '';
+                    if (file) {
+                        uploadFont(file);
+                    }
+                });
+
+                page.querySelector('#lcFontRemove').addEventListener('click', function () {
+                    ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('LibraryCollage/Font') }).then(function () {
+                        renderFont(null);
+                    }).catch(function () {
+                        Dashboard.alert('Could not remove the font.');
+                    });
+                });
 
                 page.querySelector('#lcTextStyle').addEventListener('change', refreshDefaultStyleLabels);
 

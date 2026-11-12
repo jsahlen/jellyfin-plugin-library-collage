@@ -29,6 +29,7 @@ public class CollageService
     private readonly ILibraryManager _libraryManager;
     private readonly IFileSystem _fileSystem;
     private readonly ManagedImageStore _store;
+    private readonly CustomFontStore _fontStore;
     private readonly ILogger<CollageService> _logger;
 
     /// <summary>
@@ -37,12 +38,14 @@ public class CollageService
     /// <param name="libraryManager">The library manager.</param>
     /// <param name="fileSystem">The file system.</param>
     /// <param name="store">The managed image store.</param>
+    /// <param name="fontStore">The custom font store.</param>
     /// <param name="logger">The logger.</param>
-    public CollageService(ILibraryManager libraryManager, IFileSystem fileSystem, ManagedImageStore store, ILogger<CollageService> logger)
+    public CollageService(ILibraryManager libraryManager, IFileSystem fileSystem, ManagedImageStore store, CustomFontStore fontStore, ILogger<CollageService> logger)
     {
         _libraryManager = libraryManager;
         _fileSystem = fileSystem;
         _store = store;
+        _fontStore = fontStore;
         _logger = logger;
     }
 
@@ -285,7 +288,7 @@ public class CollageService
         _ => [BaseItemKind.Movie, BaseItemKind.Series],
     };
 
-    private static CollageOptions ToOptions(PluginConfiguration config, LibrarySetting setting) => new()
+    private CollageOptions ToOptions(PluginConfiguration config, LibrarySetting setting) => new()
     {
         Layout = config.Layout,
         DimPercent = config.DimPercent,
@@ -295,7 +298,8 @@ public class CollageService
         TextScale = config.TextSizePercent / 100f,
         TextColor = ParseColor(config.TextColor),
         LabelBoxColor = ParseColor(config.LabelBoxColor),
-        LabelBoxOpacity = config.LabelBoxOpacity
+        LabelBoxOpacity = config.LabelBoxOpacity,
+        FontPath = _fontStore.GetPath()
     };
 
     private static SKColor? ParseColor(string? hex)
